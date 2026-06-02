@@ -1,7 +1,10 @@
 import TodoItem from "./TodoItem";
+import { useTodo } from "../TodoContext";
 import { s } from "../styles/todoStyles";
 
-export default function TodoList({ filtered, filter, ...itemProps }) {
+export default function TodoList() {
+  const { filtered, filter } = useTodo(); // 👈 Grab directly
+
   if (filtered.length === 0) {
     return (
       <div style={s.empty}>
@@ -17,7 +20,7 @@ export default function TodoList({ filtered, filter, ...itemProps }) {
   return (
     <div style={s.taskList}>
       {filtered.map((task) => (
-        <TodoItem key={task.id} task={task} {...itemProps} />
+        <TodoItem key={task.id} task={task} /> // We only pass the specific loop task now
       ))}
     </div>
   );

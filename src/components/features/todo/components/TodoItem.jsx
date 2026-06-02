@@ -1,17 +1,20 @@
+import { useTodo } from "../TodoContext";
 import { s } from "../styles/todoStyles";
 
-export default function TodoItem({
-  task,
-  editingId,
-  editText,
-  setEditText,
-  setEditingId,
-  startEdit,
-  saveEdit,
-  handleEditKeyDown,
-  toggleDone,
-  removeTask,
-}) {
+export default function TodoItem({ task }) {
+  // 👈 Grab global editing/action rules directly from Context
+  const {
+    editingId,
+    editText,
+    setEditText,
+    setEditingId,
+    startEdit,
+    saveEdit,
+    handleEditKeyDown,
+    toggleDone,
+    removeTask,
+  } = useTodo();
+
   const isEditing = editingId === task.id;
 
   return (
@@ -26,12 +29,8 @@ export default function TodoItem({
             onKeyDown={(e) => handleEditKeyDown(e, task.id)}
             autoFocus
           />
-          <button style={s.saveBtn} onClick={() => saveEdit(task.id)}>
-            SAVE
-          </button>
-          <button style={s.cancelBtn} onClick={() => setEditingId(null)}>
-            ✕
-          </button>
+          <button style={s.saveBtn} onClick={() => saveEdit(task.id)}>SAVE</button>
+          <button style={s.cancelBtn} onClick={() => setEditingId(null)}>✕</button>
         </>
       ) : (
         <>
@@ -44,12 +43,8 @@ export default function TodoItem({
           >
             {task.text}
           </span>
-          <button style={s.iconBtn} onClick={() => startEdit(task)}>
-            ✎
-          </button>
-          <button style={s.iconBtn} onClick={() => removeTask(task.id)}>
-            ✕
-          </button>
+          <button style={s.iconBtn} onClick={() => startEdit(task)}>✎</button>
+          <button style={s.iconBtn} onClick={() => removeTask(task.id)}>✕</button>
         </>
       )}
     </div>
