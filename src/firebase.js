@@ -1,6 +1,6 @@
 // Import the core Firebase app
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+// import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 // 1. IMPORT AUTH AND FIRESTORE
 import { getFirestore } from "firebase/firestore"; // 👈 ADD THIS
@@ -18,7 +18,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// const analytics = getAnalytics(app);
 
 // 2. EXPORT AUTH AND THE DATABASE
 export const auth = getAuth(app);
