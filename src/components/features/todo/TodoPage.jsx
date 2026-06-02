@@ -1,12 +1,11 @@
 import TodoForm from "./components/TodoForm";
 import TodoFilter from "./components/TodoFilter";
 import TodoList from "./components/TodoList";
-import { TodoProvider, useTodo } from "./TodoContext"; // 👈 Import our context tools
+import { TodoProvider, useTodo } from "./TodoContext";
 import { s } from "./styles/todoStyles";
 
-// A small inner component to safely extract context values inside the provider wrapper
 function TodoContent() {
-  const { activeCount, tasks, clearDone } = useTodo(); // 👈 Pulling straight from context!
+  const { activeCount, tasks, clearDone } = useTodo();
 
   return (
     <div style={s.container}>
@@ -17,10 +16,12 @@ function TodoContent() {
         </div>
       </div>
 
-      {/* No more prop passing nightmare! */}
       <TodoForm />
       <TodoFilter />
       <TodoList />
+      
+      {/* 👈 Add it cleanly right above the footer */}
+     
 
       <div style={s.footer}>
         <span style={s.muted}>
