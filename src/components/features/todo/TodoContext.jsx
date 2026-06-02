@@ -2,32 +2,74 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { GoogleGenAI } from "@google/genai";
 
-// 1. Create the empty context pipeline
+// 1. IMPORT FIREBASE TOOLS
+import { auth, db } from "../../../firebase"; // 👈 Make sure this path is correct!
+import { onAuthStateChanged } from "firebase/auth";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
+
 const TodoContext = createContext();
 
 // Initialize the API client
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
-// 2. Create the Provider component that holds the actual state
 export function TodoProvider({ children }) {
-  const [tasks, setTasks] = useState(() => {
-    const saved = localStorage.getItem("tasks");
-    return saved ? JSON.parse(saved) : [];
-  });
+  // --- AUTHENTICATION STATE ---
+  const [user, setUser] = useState(null);
+  const [isAuthPending, setIsAuthPending] = useState(true);
 
+  // --- TASK STATE (Empty by default, Firebase will fill it) ---
+  const [tasks, setTasks] = useState([]);
+
+  // --- UI & AI STATE ---
   const [aiStats, setAiStats] = useState(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
-
   const [input, setInput] = useState("");
   const [filter, setFilter] = useState("all");
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
 
+  // 2. LISTEN FOR LOGIN/LOGOUT
   useEffect(() => {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-  }, [tasks]);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAuthPending(false); // Tells the app Firebase is done checking
+    });
+    return () => unsubscribe();
+  }, []);
 
-  // Update your addTask function to be async
+  // 3. LISTEN TO FIRESTORE (Replaces LocalStorage)
+  useEffect(() => {
+    if (!user) {
+      setTasks([]);
+      return;
+    }
+
+    const q = query(collection(db, "tasks"), where("userId", "==", user.uid));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const dbTasks = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Sort tasks so the newest ones show up at the top
+      dbTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setTasks(dbTasks);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // 4. ADD TASK (AI Validation + Firestore)
   const addTask = async (e) => {
     if (e) e.preventDefault();
     const taskText = input.trim();
@@ -37,11 +79,14 @@ export function TodoProvider({ children }) {
       return;
     }
 
-    // 1. Show a loading message while Gemini thinks
+    if (!user) {
+      toast.error("You must be logged in to add tasks.");
+      return;
+    }
+
     const loadingToast = toast.loading("Checking task...");
 
     try {
-      // 2. Ask Gemini if the task is real
       const prompt = `
         Evaluate this to-do list task: "${taskText}".
         Is this a real, coherent task, or is it keyboard smash/gibberish?
@@ -56,7 +101,6 @@ export function TodoProvider({ children }) {
 
       const aiVerdict = response.text.trim().toUpperCase();
 
-      // 3. Handle Gemini's response
       if (aiVerdict === "INVALID") {
         toast.update(loadingToast, {
           render: "AI rejected this task as gibberish!",
@@ -64,14 +108,16 @@ export function TodoProvider({ children }) {
           isLoading: false,
           autoClose: 3000,
         });
-        return; // Stop the function, don't add the task
+        return;
       }
 
-      // 4. If VALID, add it to the list!
-      setTasks([
-        { id: Date.now().toString(), text: taskText, done: false },
-        ...tasks,
-      ]);
+      // Add to Firestore database!
+      await addDoc(collection(db, "tasks"), {
+        text: taskText,
+        done: false,
+        userId: user.uid,
+        createdAt: new Date().toISOString(),
+      });
       setInput("");
 
       toast.update(loadingToast, {
@@ -88,30 +134,46 @@ export function TodoProvider({ children }) {
         isLoading: false,
         autoClose: 3000,
       });
-      // Fallback: If the API fails, just add the task so the app doesn't break
-      setTasks([
-        { id: Date.now().toString(), text: taskText, done: false },
-        ...tasks,
-      ]);
+
+      // Fallback: Add to Firestore if AI fails
+      await addDoc(collection(db, "tasks"), {
+        text: taskText,
+        done: false,
+        userId: user.uid,
+        createdAt: new Date().toISOString(),
+      });
       setInput("");
     }
   };
 
-  const toggleDone = (id) =>
-    setTasks(tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  // 5. UPDATE TASK IN FIRESTORE
+  const toggleDone = async (id) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
 
-  const removeTask = (id) => {
-    setTasks(tasks.filter((t) => t.id !== id));
+    await updateDoc(doc(db, "tasks", id), {
+      done: !task.done,
+    });
+  };
+
+  // 6. DELETE TASK FROM FIRESTORE
+  const removeTask = async (id) => {
+    await deleteDoc(doc(db, "tasks", id));
     toast.info("Task removed.");
   };
 
+  // 7. BATCH DELETE FROM FIRESTORE
   const clearDone = () => {
-    const hasDoneTasks = tasks.some((t) => t.done);
-    if (!hasDoneTasks) {
+    const doneTasks = tasks.filter((t) => t.done);
+    if (doneTasks.length === 0) {
       toast.warning("No completed tasks to clear!");
       return;
     }
-    setTasks(tasks.filter((t) => !t.done));
+
+    // Loop through and delete each completed task
+    doneTasks.forEach(async (t) => {
+      await deleteDoc(doc(db, "tasks", t.id));
+    });
     toast.success("Cleared all completed tasks!");
   };
 
@@ -120,14 +182,15 @@ export function TodoProvider({ children }) {
     setEditText(task.text);
   };
 
-  const saveEdit = (id) => {
+  // 8. SAVE EDITS TO FIRESTORE
+  const saveEdit = async (id) => {
     if (!editText.trim()) {
       setEditingId(null);
       return;
     }
-    setTasks(
-      tasks.map((t) => (t.id === id ? { ...t, text: editText.trim() } : t)),
-    );
+    await updateDoc(doc(db, "tasks", id), {
+      text: editText.trim(),
+    });
     setEditingId(null);
   };
 
@@ -180,7 +243,6 @@ export function TodoProvider({ children }) {
     }
   };
 
-  // 3. Bundle up EVERYTHING into a single, unified context object
   const value = {
     tasks,
     input,
@@ -203,12 +265,13 @@ export function TodoProvider({ children }) {
     aiStats,
     isLoadingAi,
     generateMonthlyStats,
+    user, // 👈 Exported for the Bouncer route!
+    isAuthPending, // 👈 Exported for the Bouncer route!
   };
 
   return <TodoContext.Provider value={value}>{children}</TodoContext.Provider>;
 }
 
-// 4. Custom shorthand hook
 // eslint-disable-next-line react-refresh/only-export-components
 export function useTodo() {
   return useContext(TodoContext);

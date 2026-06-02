@@ -88,3 +88,33 @@
 .auth-toggle-btn:hover {
   color: #c8f060;
 }
+
+/* Add to the bottom of auth.css */
+.auth-divider {
+  color: #555;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-align: center;
+  margin: 10px 0;
+}
+
+.auth-social-btn {
+  background-color: transparent;
+  color: #e8e8e8;
+  border: 1px solid #e8e8e8;
+  padding: 16px;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-social-btn:hover {
+  background-color: #e8e8e8;
+  color: #0e0e0e;
+}

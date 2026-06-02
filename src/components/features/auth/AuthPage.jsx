@@ -3,11 +3,10 @@ import { useNavigate } from "react-router-dom";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInWithPopup, // 👈 1. Import the popup tool
 } from "firebase/auth";
-import { auth } from "../../../firebase";
+import { auth, googleProvider } from "../../../firebase"; // 👈 2. Import your provider
 import { toast } from "react-toastify";
-
-// 1. IMPORT YOUR NEW CSS FILE HERE
 import "./auth.css";
 
 export default function AuthPage() {
@@ -16,6 +15,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
+  // Handle standard Email/Password
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
@@ -56,6 +56,18 @@ export default function AuthPage() {
     }
   };
 
+  // 3. Handle the Google Popup
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+      toast.success("Authenticated via Google!");
+      navigate("/");
+    } catch (error) {
+      console.error(error);
+      toast.error("Google sign-in failed.");
+    }
+  };
+
   return (
     <div className="auth-page">
       <div className="auth-container">
@@ -83,6 +95,13 @@ export default function AuthPage() {
             {isLogin ? "LOGIN" : "CREATE ACCOUNT"}
           </button>
         </form>
+
+        <div className="auth-divider">OR</div>
+
+        {/* 4. The new Google Button */}
+        <button onClick={handleGoogleSignIn} className="auth-social-btn">
+          CONTINUE WITH GOOGLE
+        </button>
 
         <div className="auth-toggle-wrapper">
           <button

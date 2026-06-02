@@ -1,7 +1,8 @@
+// src/components/features/todo/TodoPage.jsx
 import TodoForm from "./components/TodoForm";
 import TodoFilter from "./components/TodoFilter";
 import TodoList from "./components/TodoList";
-import { TodoProvider, useTodo } from "./TodoContext";
+import { useTodo } from "./TodoContext"; // 👈 Notice TodoProvider is removed from this import
 import { s } from "./styles/todoStyles";
 
 function TodoContent() {
@@ -19,9 +20,6 @@ function TodoContent() {
       <TodoForm />
       <TodoFilter />
       <TodoList />
-      
-      {/* 👈 Add it cleanly right above the footer */}
-     
 
       <div style={s.footer}>
         <span style={s.muted}>
@@ -35,12 +33,11 @@ function TodoContent() {
   );
 }
 
+// 💥 REMOVE the <TodoProvider> wrapper here!
 export default function TodoPage() {
   return (
     <div style={s.page}>
-      <TodoProvider>
-        <TodoContent />
-      </TodoProvider>
+       <TodoContent /> 
     </div>
   );
 }
